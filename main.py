@@ -1,12 +1,9 @@
 import pandas as pd
 
 import matplotlib.pyplot as plt
+import h5py
 
-
-def main():
-    jump_csv_file_path = 'jump_back_pocket.csv'
-    walk_csv_file_path = 'walk_back_pocket.csv'
-
+def plot_data(jump_csv_file_path, walk_csv_file_path):
     data_jump = pd.read_csv(jump_csv_file_path)
     data_walk = pd.read_csv(walk_csv_file_path)
 
@@ -44,6 +41,9 @@ def main():
     # Show plot
     plt.show()
 
+def pre_process():
+
+
 
 if __name__ == "__main__":
-    main()
+    plot_data("jump_back_pocket.csv", "walk_back_pocket.csv")
