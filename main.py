@@ -45,16 +45,49 @@ def plot_data(df: pd.DataFrame):
     plt.show()
 
 
-def preprocess(hdf5_filename):
-    pass
+def preprocess(hdf5_filename) -> tuple[list[pd.DataFrame], list[pd.DataFrame]]:
+    train = []
+    test = []
 
-
-if __name__ == "__main__":
-    hdf5_maker.create_hdf5("data","data.h5")
     with h5py.File("data.h5","r") as hdf:
+        train_group = hdf.get("dataset/Train")
+        for key in train_group.keys():
+            df = pd.DataFrame(train_group[key][:])
+            train.append(df)
+
+        test_group = hdf.get("dataset/Test")
+        for key in test_group.keys():
+            df = pd.DataFrame(test_group[key][:])
+            test.append(df)
+
+    window_size = 5
+    samples: list[pd.DataFrame] = train + test
+    columns_to_apply_filter_to = ["Linear Acceleration x (m/s^2)","Linear Acceleration y (m/s^2)","Linear Acceleration z (m/s^2)","Absolute acceleration (m/s^2)"]
+
+    for sample in samples:
+        # plt.plot(sample["Time (s)"], sample["Absolute acceleration (m/s^2)"], color='r')
+        for column in columns_to_apply_filter_to:
+            sample[column] = sample[column].rolling(window_size).mean()
+        sample.dropna(inplace=True)
+        # plt.plot(sample["Time (s)"], sample["Absolute acceleration (m/s^2)"], color='b')
+        # plt.show()
+
+    # print(len(train))
+    # print(len(test))
+    return train, test
+
+
+def visualize(hdf5_filename):
+    with h5py.File(hdf5_filename,"r") as hdf:
         person_names = os.listdir("data")
 
         for person_name in person_names:
             df = pd.DataFrame(hdf[person_name][:])
             plot_data(df)
+
+if __name__ == "__main__":
+    hdf5_filename = "data.h5"
+    hdf5_maker.create_hdf5("data",hdf5_filename)
+    visualize(hdf5_filename)
+    preprocess(hdf5_filename)
 
