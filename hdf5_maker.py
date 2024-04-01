@@ -27,13 +27,13 @@ def generate_samples(df) -> tuple[list[pd.DataFrame], list[pd.DataFrame]]:
     return samples[0:ninety_percent_threshold], samples[ninety_percent_threshold:]
 
 
-def create_hdf5(data_directory):
+def create_hdf5(data_directory, hdf5_name):
     person_names = os.listdir(data_directory)
     category_csv_files = os.listdir(f"{data_directory}/{person_names[0]}")
-    print(f"Indices of the things = {enumerate(person_names)}")
+    print(f"Indices of the categories = {enumerate(person_names)}")
     print(category_csv_files)
 
-    with h5py.File("data.h5", "w") as hdf:
+    with h5py.File(hdf5_name, "w") as hdf:
         for person in person_names:
             person_df_list = []
 
@@ -70,7 +70,9 @@ def create_hdf5(data_directory):
 
 
 def main():
-    create_hdf5("data")
+    create_hdf5("data", "data.h5")
+
+
 
 
 if __name__ == "__main__":

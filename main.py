@@ -1,20 +1,23 @@
+import os
+
 import pandas as pd
 
 import matplotlib.pyplot as plt
+import hdf5_maker
 import h5py
 
-def plot_data(jump_csv_file_path, walk_csv_file_path):
-    data_jump = pd.read_csv(jump_csv_file_path)
-    data_walk = pd.read_csv(walk_csv_file_path)
+def plot_data(df: pd.DataFrame):
+    data_jump = df.loc[(df["category"] == 0)]
+    data_walk = df.loc[(df["category"] == 1)]
 
     # Create a 3D plot
     fig = plt.figure()
     gs = fig.add_gridspec(2,2, wspace=0.5, hspace=0.5)
     ax = fig.add_subplot(gs[:, 0], projection='3d')
 
-    jumping, = ax.plot(data_jump['x'], data_jump['y'], data_jump['z'], color='r')
+    jumping, = ax.plot(data_jump['Linear Acceleration x (m/s^2)'], data_jump['Linear Acceleration y (m/s^2)'], data_jump['Linear Acceleration z (m/s^2)'], color='r')
     jumping.set_label("Jumping")
-    walking, = ax.plot(data_walk['x'], data_walk['y'], data_walk['z'], color='g')
+    walking, = ax.plot(data_walk['Linear Acceleration x (m/s^2)'], data_walk['Linear Acceleration y (m/s^2)'], data_walk['Linear Acceleration z (m/s^2)'], color='g')
     walking.set_label("Walking")
 
     ax.legend()
@@ -25,14 +28,14 @@ def plot_data(jump_csv_file_path, walk_csv_file_path):
     ax.set_title('Directional acceleration')
 
     ax2 = fig.add_subplot(gs[0, 1])
-    ax2.plot(data_jump['time'], data_jump['abs'], color='r')
+    ax2.plot(data_jump["Time (s)"], data_jump["Absolute acceleration (m/s^2)"], color='r')
     ax2.set_ylim([-5, 100])
     ax2.set_xlabel('Time (s)')
     ax2.set_ylabel('Abs. accel. (m/s^2)')
     ax2.set_title('Jumping abs. acceleration')
 
     ax3 = fig.add_subplot(gs[1, 1])
-    ax3.plot(data_walk['time'], data_walk['abs'], color='g')
+    ax3.plot(data_walk["Time (s)"], data_walk["Absolute acceleration (m/s^2)"], color='g')
     ax3.set_ylim([-5, 100])
     ax3.set_xlabel('Time (s)')
     ax3.set_ylabel('Abs. accel. (m/s^2)')
@@ -41,9 +44,17 @@ def plot_data(jump_csv_file_path, walk_csv_file_path):
     # Show plot
     plt.show()
 
-def pre_process():
 
+def preprocess(hdf5_filename):
+    pass
 
 
 if __name__ == "__main__":
-    plot_data("jump_back_pocket.csv", "walk_back_pocket.csv")
+    hdf5_maker.create_hdf5("data","data.h5")
+    with h5py.File("data.h5","r") as hdf:
+        person_names = os.listdir("data")
+
+        for person_name in person_names:
+            df = pd.DataFrame(hdf[person_name][:])
+            plot_data(df)
+
