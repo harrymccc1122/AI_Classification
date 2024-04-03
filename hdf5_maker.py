@@ -1,6 +1,7 @@
 import math
 import os
 import random
+from datetime import datetime
 
 import h5py
 import pandas as pd
@@ -11,7 +12,7 @@ DATA_DIRECTORY_PATH = "./data"
 SAMPLE_LENGTH = 5
 
 
-def generate_samples(df) -> tuple[list[pd.DataFrame], list[pd.DataFrame]]:
+def generate_samples(df) -> list[pd.DataFrame]:
     end_time = df["Time (s)"].iloc[-1]
     samples = []
     # floor to guarantee all samples have about 5 seconds in them
@@ -21,10 +22,7 @@ def generate_samples(df) -> tuple[list[pd.DataFrame], list[pd.DataFrame]]:
         sample_df.loc[:, "Time (s)"] -= i*SAMPLE_LENGTH
         samples.append(sample_df)
 
-    random.shuffle(samples)
-    ninety_percent_threshold = math.floor(0.9*len(samples))
-    # train, then test
-    return samples[0:ninety_percent_threshold], samples[ninety_percent_threshold:]
+    return samples
 
 
 def create_hdf5(data_directory, hdf5_name):
@@ -45,17 +43,19 @@ def create_hdf5(data_directory, hdf5_name):
             df_dict = person_df.to_records(index=False)
             hdf.create_dataset(person, data=df_dict)
 
-        training_data: list[pd.DataFrame] = []
-        testing_data: list[pd.DataFrame] = []
+        data: list[pd.DataFrame] = []
         for person in person_names:
             for category_index, category_csv_file in enumerate(category_csv_files):
                 df = pd.read_csv(f"{data_directory}/{person}/{category_csv_file}")
                 df.loc[:, "category"] = category_index
-                train, test = generate_samples(df)
-                training_data += train
-                testing_data += test
+                samples = generate_samples(df)
+                data += samples
 
         dataset_group = hdf.create_group("dataset")
+        random.shuffle(data)
+        ninety_percent_threshold = math.floor(0.9*len(data))
+        training_data = data[:ninety_percent_threshold]
+        testing_data = data[ninety_percent_threshold:]
 
         training_group = dataset_group.create_group("Train")
         for i, df in enumerate(training_data):
@@ -69,9 +69,8 @@ def create_hdf5(data_directory, hdf5_name):
 
 
 def main():
+    random.seed(datetime.now().timestamp())
     create_hdf5("data", "data.h5")
-
-
 
 
 if __name__ == "__main__":
