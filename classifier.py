@@ -110,6 +110,8 @@ def show_ui():
     window = tk.Tk()
     greeting = tk.Label(text="Hello, Tkinter")
     greeting.pack()
+    window.mainloop()
+
 
 def main():
     hdf5_filename = "data.h5"

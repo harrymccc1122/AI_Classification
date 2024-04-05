@@ -26,18 +26,20 @@ def generate_samples(df) -> list[pd.DataFrame]:
 
 
 def create_hdf5(data_directory, hdf5_name):
+    # Returns ['David', 'Cousin', 'Noah']
     person_names = os.listdir(data_directory)
+    # Returns ['jump.csv', 'walk.csv']
     category_csv_files = os.listdir(f"{data_directory}/{person_names[0]}")
+
+
     print(f"Indices of the categories = {list(enumerate(category_csv_files))}")
 
     with h5py.File(hdf5_name, "w") as hdf:
-        for person_index, person in enumerate(person_names):
+        for person in person_names:
             person_group = hdf.create_group(f"/{person}")
 
-            for category_index, category_csv_file in enumerate(category_csv_files):
+            for category_csv_file in category_csv_files:
                 df = pd.read_csv(f"{data_directory}/{person}/{category_csv_file}")
-                df.loc[:, "category"] = category_index
-                df.loc[:, "person"] = person_index
                 person_group.create_dataset(category_csv_file, data=df.to_records(index=False))
 
         data: list[pd.DataFrame] = []
@@ -49,21 +51,22 @@ def create_hdf5(data_directory, hdf5_name):
                 samples = generate_samples(df)
                 data += samples
 
+        # create dataset group
         dataset_group = hdf.create_group("dataset")
+        # shuffle data
         random.shuffle(data)
+        # split data
         ninety_percent_threshold = math.floor(0.9*len(data))
         training_data = data[:ninety_percent_threshold]
         testing_data = data[ninety_percent_threshold:]
 
         training_group = dataset_group.create_group("Train")
         for i, df in enumerate(training_data):
-            df_dict = df.to_records(index=False)
-            training_group.create_dataset(f"sample_{i}", data=df_dict)
+            training_group.create_dataset(f"Sample_{i}", data=df.to_records(index=False))
 
         testing_group = dataset_group.create_group("Test")
         for i, df in enumerate(testing_data):
-            df_dict = df.to_records(index=False)
-            testing_group.create_dataset(f"sample_{i}", data=df_dict)
+            testing_group.create_dataset(f"Sample_{i}", data=df.to_records(index=False))
 
 
 def read_hdf5_train_test(hdf5_filename: str) -> tuple[list[pd.DataFrame], list[pd.DataFrame]]:
@@ -84,18 +87,18 @@ def read_hdf5_train_test(hdf5_filename: str) -> tuple[list[pd.DataFrame], list[p
     return train, test
 
 
-def read_hdf5_original_datasets(hdf5_filename: str) -> list[pd.DataFrame]:
-    dataframes = []
+def read_hdf5_original_datasets(hdf5_filename: str) -> dict[str, list[pd.DataFrame]]:
+    data = {}
 
     with h5py.File(hdf5_filename,"r") as hdf:
-        person_groups = [item for name, item in hdf.items() if not name == "dataset"]
-        for group in person_groups:
+        person_groups = [(name, item) for name, item in hdf.items() if not name == "dataset"]
+        for name, group in person_groups:
             datasets = [item for name, item in group.items() if isinstance(item, h5py.Dataset)]
             df_list = [pd.DataFrame(dataset[:]) for dataset in datasets]
 
-            dataframes += df_list
+            data[str(name)] = df_list
 
-    return dataframes
+    return data
 
 
 def main():
