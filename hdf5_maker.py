@@ -32,17 +32,13 @@ def create_hdf5(data_directory, hdf5_name):
 
     with h5py.File(hdf5_name, "w") as hdf:
         for person_index, person in enumerate(person_names):
-            person_df_list = []
+            person_group = hdf.create_group(f"/{person}")
 
             for category_index, category_csv_file in enumerate(category_csv_files):
                 df = pd.read_csv(f"{data_directory}/{person}/{category_csv_file}")
                 df.loc[:, "category"] = category_index
                 df.loc[:, "person"] = person_index
-                person_df_list.append(df)
-
-            person_df = pd.concat(person_df_list)
-            df_dict = person_df.to_records(index=False)
-            hdf.create_dataset(person, data=df_dict)
+                person_group.create_dataset(category_csv_file, data=df.to_records(index=False))
 
         data: list[pd.DataFrame] = []
         for person_index, person in enumerate(person_names):
@@ -89,11 +85,18 @@ def read_hdf5_train_test(hdf5_filename: str) -> tuple[list[pd.DataFrame], list[p
 
 
 def read_hdf5_original_datasets(hdf5_filename: str) -> list[pd.DataFrame]:
-    with h5py.File(hdf5_filename,"r") as hdf:
-        groups = [item for _, item in hdf.items() if not isinstance(item, h5py.Group)]
-        person_data = [pd.DataFrame(group[:]) for group in groups]
+    dataframes = []
 
-    return person_data
+    with h5py.File(hdf5_filename,"r") as hdf:
+        person_groups = [item for name, item in hdf.items() if not name == "dataset"]
+        for group in person_groups:
+            datasets = [item for name, item in group.items() if isinstance(item, h5py.Dataset)]
+            df_list = [pd.DataFrame(dataset[:]) for dataset in datasets]
+
+            dataframes += df_list
+
+    return dataframes
+
 
 def main():
     random.seed(datetime.now().timestamp())

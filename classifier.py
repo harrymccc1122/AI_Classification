@@ -113,7 +113,7 @@ def show_ui():
 
 def main():
     hdf5_filename = "data.h5"
-    hdf5_maker.create_hdf5("data", hdf5_filename)
+    # hdf5_maker.create_hdf5("data", hdf5_filename)
     # visualize(hdf5_filename)
     train_samples, test_samples = hdf5_maker.read_hdf5_train_test(hdf5_filename)
 
