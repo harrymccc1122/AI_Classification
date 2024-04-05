@@ -14,20 +14,14 @@ import tkinter as tk
 
 
 def preprocess(samples: list[pd.DataFrame]) -> list[pd.DataFrame]:
-
     window_size = 5
     columns_to_apply_filter_to = ["Linear Acceleration x (m/s^2)","Linear Acceleration y (m/s^2)","Linear Acceleration z (m/s^2)","Absolute acceleration (m/s^2)"]
 
     for sample in samples:
-        # plt.plot(sample["Time (s)"], sample["Absolute acceleration (m/s^2)"], color='r')
         for column in columns_to_apply_filter_to:
             sample[column] = sample[column].rolling(window_size).mean()
         sample.dropna(inplace=True)
-        # plt.plot(sample["Time (s)"], sample["Absolute acceleration (m/s^2)"], color='b')
-        # plt.show()
 
-    # print(len(train))
-    # print(len(test))
     return samples
 
 
