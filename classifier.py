@@ -1,16 +1,12 @@
-import os
-import time
+import math
 
 import pandas as pd
 
-import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.preprocessing import StandardScaler
 
 import hdf5_maker
-import h5py
-import tkinter as tk
 
 
 def preprocess(samples: list[pd.DataFrame]) -> list[pd.DataFrame]:
@@ -25,7 +21,7 @@ def preprocess(samples: list[pd.DataFrame]) -> list[pd.DataFrame]:
     return samples
 
 
-def extract_features(train_samples: list[pd.DataFrame]) -> pd.DataFrame:
+def extract_features(train_samples: list[pd.DataFrame], include_labels=True) -> pd.DataFrame:
     columns_to_apply_filter_to = ["Linear Acceleration x (m/s^2)", "Linear Acceleration y (m/s^2)",
                                   "Linear Acceleration z (m/s^2)", "Absolute acceleration (m/s^2)"]
 
@@ -50,6 +46,11 @@ def extract_features(train_samples: list[pd.DataFrame]) -> pd.DataFrame:
             "meanA": [],
             "stdA": [],
             "kurtosisA": [],
+
+        }
+
+    if include_labels:
+        all_features_dict |= {
             "category": [],
             "person": [],
         }
@@ -81,9 +82,13 @@ def extract_features(train_samples: list[pd.DataFrame]) -> pd.DataFrame:
             "meanA": sample[a].mean(),
             "stdA": sample[a].std(),
             "kurtosisA": sample[a].kurtosis(),
-            "category": sample["category"].max(),
-            "person": sample["person"].max(),
         }
+
+        if include_labels:
+            feature_dict |= {
+                "category": sample["category"].max(),
+                "person": sample["person"].max(),
+            }
 
         for key, value in feature_dict.items():
             all_features_dict[key].append(value)
@@ -100,17 +105,56 @@ def logistic_regression(df: pd.DataFrame) -> Pipeline:
 
     return clf
 
-def show_ui():
-    window = tk.Tk()
-    greeting = tk.Label(text="Hello, Tkinter")
-    greeting.pack()
-    window.mainloop()
+
+def get_classifier(hdf5_filename):
+    train_samples, _test_samples = hdf5_maker.read_hdf5_train_test(hdf5_filename)
+
+    filtered_train_samples = preprocess(train_samples)
+    train_features = extract_features(filtered_train_samples)
+
+    clf = logistic_regression(train_features)
+
+    return clf
+
+
+def classify_data(hdf5_filename: str, csv_file: str) -> pd.DataFrame:
+    df = pd.read_csv(csv_file)
+    correct_column_set = {
+        "Time (s)",
+        "Linear Acceleration x (m/s^2)",
+        "Linear Acceleration y (m/s^2)",
+        "Linear Acceleration z (m/s^2)",
+        "Absolute acceleration (m/s^2)"
+    }
+
+    if set(df.columns) != correct_column_set:
+        raise Exception("Incorrect csv format")
+
+    sample_length = 150
+    number_of_samples = math.floor(len(df)/sample_length)
+    sample_list = [df.iloc[i*sample_length:(i+1)*sample_length] for i in range(0, number_of_samples)]
+
+    filtered_samples = preprocess(sample_list)
+
+    features = extract_features(filtered_samples, include_labels=False)
+    print(features)
+
+    clf = get_classifier(hdf5_filename)
+    y_prediction = clf.predict(features)
+    print(y_prediction)
+
+    # add column
+    df["category"] = None
+
+    for index, prediction in enumerate(y_prediction):
+        df.loc[index*sample_length:(index+1)*sample_length, "category"] = prediction
+
+    return df
 
 
 def main():
     hdf5_filename = "data.h5"
     # hdf5_maker.create_hdf5("data", hdf5_filename)
-    # visualize(hdf5_filename)
     train_samples, test_samples = hdf5_maker.read_hdf5_train_test(hdf5_filename)
 
     filtered_train_samples = preprocess(train_samples)
