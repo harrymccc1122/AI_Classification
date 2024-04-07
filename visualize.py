@@ -33,14 +33,14 @@ def plot_person_data(person_name: str, data_jump: pd.DataFrame, data_walk: pd.Da
 
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.plot(data_jump["Time (s)"], data_jump["Absolute acceleration (m/s^2)"], color='r')
-    ax2.set_ylim([-5, 150])
+    ax2.set_ylim([-5, 200])
     ax2.set_xlabel('Time (s)')
     ax2.set_ylabel('Abs. accel. (m/s^2)')
     ax2.set_title('Jumping abs. acceleration')
 
     ax3 = fig.add_subplot(gs[1, 1])
     ax3.plot(data_walk["Time (s)"], data_walk["Absolute acceleration (m/s^2)"], color='g')
-    ax3.set_ylim([-5, 150])
+    ax3.set_ylim([-5, 200])
     ax3.set_xlabel('Time (s)')
     ax3.set_ylabel('Abs. accel. (m/s^2)')
     ax3.set_title('Walking abs. acceleration')

@@ -1,8 +1,13 @@
 import math
 
 import pandas as pd
+from matplotlib import pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.inspection import DecisionBoundaryDisplay
 
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, roc_auc_score, \
+    roc_curve, RocCurveDisplay
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -25,28 +30,33 @@ def extract_features(train_samples: list[pd.DataFrame], include_labels=True) -> 
     columns_to_apply_filter_to = ["Linear Acceleration x (m/s^2)", "Linear Acceleration y (m/s^2)",
                                   "Linear Acceleration z (m/s^2)", "Absolute acceleration (m/s^2)"]
 
-    all_features_dict = {
-            "minX": [],
-            "maxX": [],
-            "meanX": [],
-            "stdX": [],
-            "kurtosisX": [],
-            "minY": [],
-            "maxY": [],
-            "meanY": [],
-            "stdY": [],
-            "kurtosisY": [],
-            "minZ": [],
-            "maxZ": [],
-            "meanZ": [],
-            "stdZ": [],
-            "kurtosisZ": [],
-            "minA": [],
-            "maxA": [],
-            "meanA": [],
-            "stdA": [],
-            "kurtosisA": [],
+    x = columns_to_apply_filter_to[0]
+    y = columns_to_apply_filter_to[1]
+    z = columns_to_apply_filter_to[2]
+    a = columns_to_apply_filter_to[3]
 
+    columns = {
+        "X": x,
+        "Y": y,
+        "Z": z,
+        "A": a
+    }
+
+    all_features_dict = {}
+    for column_id, column_name in columns.items():
+        all_features_dict |= {
+            f"min{column_id}": [],
+            f"max{column_id}": [],
+            f"range{column_id}": [],
+            f"mean{column_id}": [],
+            f"median{column_id}": [],
+            f'sum{column_id}': [],
+            f"std{column_id}": [],
+            f"variance{column_id}": [],
+            f"skew{column_id}": [],
+            f"interquartile{column_id}": [],
+            f"kurtosis{column_id}": [],
+            f"correlation{column_id}": []
         }
 
     if include_labels:
@@ -56,33 +66,22 @@ def extract_features(train_samples: list[pd.DataFrame], include_labels=True) -> 
         }
 
     for sample in train_samples:
-        x = columns_to_apply_filter_to[0]
-        y = columns_to_apply_filter_to[1]
-        z = columns_to_apply_filter_to[2]
-        a = columns_to_apply_filter_to[3]
-
-        feature_dict = {
-            "minX": sample[x].min(),
-            "maxX": sample[x].max(),
-            "meanX": sample[x].mean(),
-            "stdX": sample[x].std(),
-            "kurtosisX": sample[x].kurtosis(),
-            "minY": sample[y].min(),
-            "maxY": sample[y].max(),
-            "meanY": sample[y].mean(),
-            "stdY": sample[y].std(),
-            "kurtosisY": sample[y].kurtosis(),
-            "minZ": sample[z].min(),
-            "maxZ": sample[z].max(),
-            "meanZ": sample[z].mean(),
-            "stdZ": sample[z].std(),
-            "kurtosisZ": sample[z].kurtosis(),
-            "minA": sample[a].min(),
-            "maxA": sample[a].max(),
-            "meanA": sample[a].mean(),
-            "stdA": sample[a].std(),
-            "kurtosisA": sample[a].kurtosis(),
-        }
+        feature_dict = {}
+        for column_id, column_name in columns.items():
+            feature_dict |= {
+                f"min{column_id}": sample[column_name].min(),
+                f"max{column_id}": sample[column_name].max(),
+                f"range{column_id}": sample[column_name].max() - sample[column_name].min(),
+                f"mean{column_id}": sample[column_name].mean(),
+                f"median{column_id}": sample[column_name].median(),
+                f'sum{column_id}': sample[column_name].sum(),
+                f"std{column_id}": sample[column_name].std(),
+                f"variance{column_id}": sample[column_name].var(),
+                f"skew{column_id}": sample[column_name].skew(),
+                f"interquartile{column_id}": sample[column_name].quantile(0.75) - sample[column_name].quantile(0.25),
+                f"kurtosis{column_id}": sample[column_name].kurtosis(),
+                f"correlation{column_id}": sample[column_name].corr(sample[a])
+            }
 
         if include_labels:
             feature_dict |= {
@@ -168,9 +167,49 @@ def main():
     test_data = test_features.iloc[:, :-2]
     test_labels = test_features.loc[:, "category"]
     y_prediction = clf.predict(test_data)
-    y_clf_prob = clf.predict_proba(test_data)
+    y_probability = clf.predict_proba(test_data)
 
-    for index, category_probabilities in enumerate(y_clf_prob):
+    print(f"{accuracy_score(test_labels, y_prediction) * 100:.1f}% of the predictions are correct")
+    cm = confusion_matrix(test_labels, y_prediction)
+    print(cm)
+    print(f"f1 score is {f1_score(test_labels, y_prediction):.4f}")
+    print(f"auc score is {roc_auc_score(test_labels, y_probability[:, 1]):.4f}")
+
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["jumping", "walking"])
+    disp.plot()
+    fpr, tpr, _ = roc_curve(test_labels, y_probability[:, 1], pos_label=clf.classes_[1])
+    roc = RocCurveDisplay(fpr=fpr, tpr=tpr)
+    roc.plot()
+    plt.show()
+
+    data = train_features.iloc[:, :-2]
+    labels = train_features.loc[:, "category"]
+    print(data)
+    print(labels)
+    l_reg = LogisticRegression(max_iter=10000)
+    clf = make_pipeline(StandardScaler(), l_reg)
+    clf.fit(data, labels)
+
+    pipeline = make_pipeline(StandardScaler(), PCA(n_components=2))
+
+    pipeline.fit(data, labels)
+    x_train_pca = pipeline.transform(data)
+
+    clf = make_pipeline(LogisticRegression(max_iter=10000))
+
+    clf.fit(x_train_pca, labels)
+
+    y_prediction = clf.predict(x_train_pca)
+    y_probability = clf.predict_proba(x_train_pca)
+
+    disp = DecisionBoundaryDisplay.from_estimator(
+        clf, x_train_pca, response_method="predict",
+        xlabel='X1', ylabel='X2'
+    )
+    disp.ax_.scatter(x_train_pca[:, 0], x_train_pca[:, 1], c=labels)
+    plt.show()
+
+    for index, category_probabilities in enumerate(y_probability):
         print(f"Sample {index}: {max(category_probabilities)*100:.1f}% confident, {"correct" if y_prediction[index] == test_labels[index] else "incorrect"}")
 
     correct = sum([1 if prediction == real else 0 for prediction, real in zip(y_prediction, test_labels)])

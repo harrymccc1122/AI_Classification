@@ -1,0 +1,26 @@
+welcome to our 292 demo!
+- well be showing an app we built using python
+	- that can determine if you are walking or jumping
+		- based on a csv file of accelerometer data
+	- application with health/fitness apps
+		- to only count the time of your workout
+			- when you are actually moving
+- it uses accelerometer data
+	- taken from phyphox the app 
+- we collected data (voiceover)
+	- different positions
+		- left and right hand
+		- left and right pant pocket
+		- left and right jacket pocket
+		- to get varied data so our classifier works 
+			- no matter where the phone is placed
+	- initially we recorded jumping and walking combined
+		- made labeling process difficult
+	- we then collected just jumping and then just walking
+		- easy labeling and works well
+	- we have total of 18 minutes of collected data
+- now the app demo!
+- next steps:
+	- work live (fitness app)
+	- get more training data
+		- different phones, shoes, heights of ppl (+accurate)
